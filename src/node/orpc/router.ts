@@ -2354,7 +2354,7 @@ export const router = (authToken?: string) => {
         .handler(async ({ context, input }) => {
           const result = await context.workspaceService.fork(
             input.sourceWorkspaceId,
-            input.newName
+            input.newName ?? undefined
           );
           if (!result.success) {
             return { success: false, error: result.error };

@@ -146,6 +146,23 @@ function appendCollisionSuffix(baseName: string): string {
   return `${baseName}-${suffix}`;
 }
 
+/**
+ * Generate a unique fork branch name from the parent workspace name.
+ * Scans existing workspace names for the `{parentName}-fork-N` pattern
+ * and picks N+1, guaranteeing a valid git-safe branch name.
+ */
+export function generateForkBranchName(parentName: string, existingNames: string[]): string {
+  const prefix = `${parentName}-fork-`;
+  let max = 0;
+  for (const name of existingNames) {
+    if (name.startsWith(prefix)) {
+      const n = parseInt(name.slice(prefix.length), 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+  }
+  return `${prefix}${max + 1}`;
+}
+
 function isErrnoWithCode(error: unknown, code: string): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === code);
 }
@@ -1962,6 +1979,8 @@ export class WorkspaceService extends EventEmitter {
             projectConfig.workspaces.find((w) => w.path === workspacePath);
           if (workspaceEntry) {
             workspaceEntry.title = title;
+            // Exit auto-name state on any title update (manual rename or auto-generated).
+            delete workspaceEntry.autoName;
           }
         }
         return config;
@@ -2522,16 +2541,11 @@ export class WorkspaceService extends EventEmitter {
 
   async fork(
     sourceWorkspaceId: string,
-    newName: string
+    newName?: string
   ): Promise<Result<{ metadata: FrontendWorkspaceMetadata; projectPath: string }>> {
     try {
       if (sourceWorkspaceId === MUX_HELP_CHAT_WORKSPACE_ID) {
         return Err("Cannot fork the Chat with Mux system workspace");
-      }
-
-      const validation = validateWorkspaceName(newName);
-      if (!validation.valid) {
-        return Err(validation.error ?? "Invalid workspace name");
       }
 
       if (this.aiService.isStreaming(sourceWorkspaceId)) {
@@ -2560,6 +2574,24 @@ export class WorkspaceService extends EventEmitter {
         return Err("Forking Docker workspaces is not supported. Create a new workspace instead.");
       }
 
+      // Auto-generate branch name when user omits one (seamless fork).
+      // Uses pattern: {parentName}-fork-{N}, scanning existing names to avoid collisions.
+      const isAutoName = newName == null;
+      let resolvedName: string;
+      if (isAutoName) {
+        const allMetadata = await this.config.getAllWorkspaceMetadata();
+        const existingNames = allMetadata
+          .filter((m) => m.projectPath === foundProjectPath)
+          .map((m) => m.name);
+        resolvedName = generateForkBranchName(sourceMetadata.name, existingNames);
+      } else {
+        const validation = validateWorkspaceName(newName);
+        if (!validation.valid) {
+          return Err(validation.error ?? "Invalid workspace name");
+        }
+        resolvedName = newName;
+      }
+
       const runtime = createRuntime(sourceRuntimeConfig, {
         projectPath: foundProjectPath,
         workspaceName: sourceMetadata.name,
@@ -2574,7 +2606,7 @@ export class WorkspaceService extends EventEmitter {
       const forkResult = await runtime.forkWorkspace({
         projectPath: foundProjectPath,
         sourceWorkspaceName: sourceMetadata.name,
-        newWorkspaceName: newName,
+        newWorkspaceName: resolvedName,
         initLogger,
       });
 
@@ -2593,7 +2625,7 @@ export class WorkspaceService extends EventEmitter {
         runtime,
         {
           projectPath: foundProjectPath,
-          branchName: newName,
+          branchName: resolvedName,
           trunkBranch: forkResult.sourceBranch ?? "main",
           workspacePath: forkResult.workspacePath!,
           initLogger,
@@ -2649,7 +2681,7 @@ export class WorkspaceService extends EventEmitter {
           }
         }
       } catch (copyError) {
-        await runtime.deleteWorkspace(foundProjectPath, newName, true);
+        await runtime.deleteWorkspace(foundProjectPath, resolvedName, true);
         try {
           await fsPromises.rm(newSessionDir, { recursive: true, force: true });
         } catch (cleanupError) {
@@ -2661,7 +2693,13 @@ export class WorkspaceService extends EventEmitter {
       }
 
       // Copy plan file if it exists (checks both new and legacy paths)
-      await copyPlanFile(runtime, sourceMetadata.name, sourceWorkspaceId, newName, projectName);
+      await copyPlanFile(
+        runtime,
+        sourceMetadata.name,
+        sourceWorkspaceId,
+        resolvedName,
+        projectName
+      );
 
       // Apply runtime-provided config updates (e.g., Coder marks shared workspaces)
       const { forkedRuntimeConfig } = await applyForkRuntimeUpdates(
@@ -2684,11 +2722,11 @@ export class WorkspaceService extends EventEmitter {
       }
 
       // Compute namedWorkspacePath for frontend metadata
-      const namedWorkspacePath = runtime.getWorkspacePath(foundProjectPath, newName);
+      const namedWorkspacePath = runtime.getWorkspacePath(foundProjectPath, resolvedName);
 
       const metadata: FrontendWorkspaceMetadata = {
         id: newWorkspaceId,
-        name: newName,
+        name: resolvedName,
         projectName,
         projectPath: foundProjectPath,
         createdAt: new Date().toISOString(),
@@ -2696,6 +2734,10 @@ export class WorkspaceService extends EventEmitter {
         namedWorkspacePath,
         // Preserve workspace organization when forking via /fork.
         sectionId: sourceMetadata.sectionId,
+        // Seamless fork: inherit parent title as placeholder, mark for auto-naming on first message.
+        ...(isAutoName
+          ? { title: sourceMetadata.title ?? sourceMetadata.name, autoName: true }
+          : {}),
       };
 
       await this.config.addWorkspace(foundProjectPath, metadata);
