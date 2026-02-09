@@ -91,6 +91,9 @@ export function buildProviderOptions(
 
   // Build Anthropic-specific options
   if (provider === "anthropic") {
+    const cacheTtl = muxProviderOptions?.anthropic?.cacheTtl;
+    const cacheControl = cacheTtl ? { type: "ephemeral" as const, ttl: cacheTtl } : undefined;
+
     // Opus 4.5+ use the effort parameter for reasoning control.
     // Opus 4.6 uses adaptive thinking (model decides when/how much to think).
     // Opus 4.5 uses enabled thinking with a budgetTokens ceiling.
@@ -122,6 +125,7 @@ export function buildProviderOptions(
           disableParallelToolUse: false,
           sendReasoning: true,
           ...(thinking && { thinking }),
+          ...(cacheControl && { cacheControl }),
           effort: effortLevel,
         },
       };
@@ -138,6 +142,7 @@ export function buildProviderOptions(
       anthropic: {
         disableParallelToolUse: false, // Always enable concurrent tool execution
         sendReasoning: true, // Include reasoning traces in requests sent to the model
+        ...(cacheControl && { cacheControl }),
         // Conditionally add thinking configuration (non-Opus 4.5 models)
         ...(budgetTokens > 0 && {
           thinking: {
