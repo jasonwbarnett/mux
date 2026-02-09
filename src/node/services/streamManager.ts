@@ -966,7 +966,8 @@ export class StreamManager extends EventEmitter {
     providerOptions?: Record<string, unknown>,
     maxOutputTokens?: number,
     toolPolicy?: ToolPolicy,
-    hasQueuedMessage?: () => boolean
+    hasQueuedMessage?: () => boolean,
+    anthropicCacheTtlOverride?: AnthropicCacheTtl
   ): StreamRequestConfig {
     // Determine toolChoice based on toolPolicy.
     //
@@ -1011,7 +1012,8 @@ export class StreamManager extends EventEmitter {
     let finalMessages = messages;
     let finalTools = tools;
     let finalSystem: string | undefined = system;
-    const anthropicCacheTtl = getAnthropicCacheTtl(finalProviderOptions);
+    const anthropicCacheTtl =
+      anthropicCacheTtlOverride ?? getAnthropicCacheTtl(finalProviderOptions);
 
     // For Anthropic models, convert system message to a cached message at the start
     const cachedSystemMessage = createCachedSystemMessage(system, modelString, anthropicCacheTtl);
@@ -1113,7 +1115,8 @@ export class StreamManager extends EventEmitter {
     toolPolicy?: ToolPolicy,
     hasQueuedMessage?: () => boolean,
     workspaceName?: string,
-    thinkingLevel?: string
+    thinkingLevel?: string,
+    anthropicCacheTtlOverride?: AnthropicCacheTtl
   ): WorkspaceStreamInfo {
     // abortController is created and linked to the caller-provided abortSignal in startStream().
 
@@ -1127,7 +1130,8 @@ export class StreamManager extends EventEmitter {
       providerOptions,
       maxOutputTokens,
       toolPolicy,
-      hasQueuedMessage
+      hasQueuedMessage,
+      anthropicCacheTtlOverride
     );
 
     // Start streaming - this can throw immediately if API key is missing
@@ -2470,7 +2474,8 @@ export class StreamManager extends EventEmitter {
     providedStreamToken?: StreamToken,
     hasQueuedMessage?: () => boolean,
     workspaceName?: string,
-    thinkingLevel?: string
+    thinkingLevel?: string,
+    anthropicCacheTtlOverride?: AnthropicCacheTtl
   ): Promise<Result<StreamToken, SendMessageError>> {
     const typedWorkspaceId = workspaceId as WorkspaceId;
 
@@ -2545,7 +2550,8 @@ export class StreamManager extends EventEmitter {
           toolPolicy,
           hasQueuedMessage,
           workspaceName,
-          thinkingLevel
+          thinkingLevel,
+          anthropicCacheTtlOverride
         );
 
         // Guard against a narrow race:

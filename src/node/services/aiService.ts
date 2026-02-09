@@ -960,7 +960,8 @@ export class AIService extends EventEmitter {
         streamToken, // Pass the pre-generated stream token
         hasQueuedMessage,
         metadata.name,
-        effectiveThinkingLevel
+        effectiveThinkingLevel,
+        effectiveMuxProviderOptions.anthropic?.cacheTtl ?? undefined
       );
 
       if (!streamResult.success) {
