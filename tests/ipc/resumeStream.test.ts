@@ -28,6 +28,11 @@ describeIntegration("resumeStream", () => {
       const { env, workspaceId, cleanup } = await setupWorkspace("anthropic");
       const collector1 = createStreamCollector(env.orpc, workspaceId);
       collector1.start();
+      // Wait until the onChat subscription is fully established before sending.
+      // Without this guard, the initial history replay can race with the live user
+      // message append and emit the same user message twice in collector1.
+      await collector1.waitForSubscription(10000);
+
       try {
         // Start a stream with a bash command that outputs a specific word
         const expectedWord = "RESUMPTION_TEST_SUCCESS";
