@@ -16,22 +16,16 @@ import { getTokenizerForModel } from "@/node/utils/main/tokenizer";
 import { KNOWN_MODELS } from "@/common/constants/knownModels";
 import { safeStringifyForCounting } from "@/common/utils/tokens/safeStringifyForCounting";
 import { normalizeLegacyMuxMetadata } from "@/node/utils/messages/legacy";
-import { isDurableCompactionBoundaryMarker } from "@/common/utils/messages/compactionBoundary";
-
-function isPositiveInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0
-  );
-}
+import {
+  isDurableCompactionBoundaryMarker,
+  isPositiveInteger,
+  hasDurableCompactedMarker,
+} from "@/common/utils/messages/compactionBoundary";
 
 function isNonNegativeInteger(value: unknown): value is number {
   return (
     typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
   );
-}
-
-function hasDurableCompactedMarker(value: unknown): value is true | "user" | "idle" {
-  return value === true || value === "user" || value === "idle";
 }
 
 function hasDurableCompactionBoundary(metadata: MuxMetadata | undefined): boolean {

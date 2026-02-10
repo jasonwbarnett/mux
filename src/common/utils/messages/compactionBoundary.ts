@@ -2,13 +2,13 @@ import assert from "@/common/utils/assert";
 
 import type { MuxMessage } from "@/common/types/message";
 
-function isPositiveInteger(value: unknown): value is number {
+export function isPositiveInteger(value: unknown): value is number {
   return (
     typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0
   );
 }
 
-function hasDurableCompactedMarker(value: unknown): value is true | "user" | "idle" {
+export function hasDurableCompactedMarker(value: unknown): value is true | "user" | "idle" {
   return value === true || value === "user" || value === "idle";
 }
 
