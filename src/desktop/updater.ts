@@ -278,10 +278,6 @@ export class UpdaterService {
   }
 
   /**
-   * Get the current update status
-   */
-
-  /**
    * Subscribe to status updates
    */
   subscribe(callback: (status: UpdateStatus) => void): () => void {
@@ -290,6 +286,10 @@ export class UpdaterService {
       this.subscribers.delete(callback);
     };
   }
+
+  /**
+   * Get the current update status
+   */
   getStatus(): UpdateStatus {
     return this.updateStatus;
   }
