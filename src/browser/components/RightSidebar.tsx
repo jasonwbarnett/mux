@@ -25,7 +25,6 @@ import { cn } from "@/common/lib/utils";
 import type { ReviewNoteData } from "@/common/types/review";
 import { TerminalTab } from "./RightSidebar/TerminalTab";
 import {
-  RIGHT_SIDEBAR_TABS,
   isTabType,
   isTerminalTab,
   isFileTab,
@@ -90,9 +89,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 
-// Re-export for consumers
-export type { ReviewStats };
-
 interface SidebarContainerProps {
   collapsed: boolean;
   /** Custom width from drag-resize (unified across all tabs) */
@@ -145,9 +141,6 @@ const SidebarContainer: React.FC<SidebarContainerProps> = ({
     </div>
   );
 };
-
-export { RIGHT_SIDEBAR_TABS, isTabType };
-export type { TabType };
 
 interface RightSidebarProps {
   workspaceId: string;
