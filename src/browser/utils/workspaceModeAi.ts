@@ -6,7 +6,7 @@ export type WorkspaceAISettingsCache = Partial<
   Record<string, { model: string; thinkingLevel: ThinkingLevel }>
 >;
 
-function normalizeAgentId(agentId: string): string {
+export function normalizeAgentId(agentId: string): string {
   return typeof agentId === "string" && agentId.trim().length > 0
     ? agentId.trim().toLowerCase()
     : "exec";

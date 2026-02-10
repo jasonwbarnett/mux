@@ -14,6 +14,7 @@ import {
 import { getDefaultModel } from "@/browser/hooks/useModelsFromSettings";
 import { setWorkspaceModelWithOrigin } from "@/browser/utils/modelChange";
 import {
+  normalizeAgentId,
   resolveWorkspaceAiSettingsForAgent,
   type WorkspaceAISettingsCache,
 } from "@/browser/utils/workspaceModeAi";
@@ -46,10 +47,7 @@ export function WorkspaceModeAISync(props: { workspaceId: string }): null {
     const modelKey = getModelKey(workspaceId);
     const thinkingKey = getThinkingLevelKey(workspaceId);
 
-    const normalizedAgentId =
-      typeof agentId === "string" && agentId.trim().length > 0
-        ? agentId.trim().toLowerCase()
-        : "exec";
+    const normalizedAgentId = normalizeAgentId(agentId);
 
     const isExplicitAgentSwitch =
       prevAgentIdRef.current !== null &&
