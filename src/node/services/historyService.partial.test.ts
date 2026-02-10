@@ -9,11 +9,11 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 describe("HistoryService partial persistence - Error Recovery", () => {
-  let partialService: HistoryService;
+  let historyService: HistoryService;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    ({ historyService: partialService, cleanup } = await createTestHistoryService());
+    ({ historyService, cleanup } = await createTestHistoryService());
   });
 
   afterEach(async () => {
@@ -40,16 +40,16 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     };
 
     // Mock readPartial to return errored partial
-    partialService.readPartial = mock(() => Promise.resolve(erroredPartial));
+    historyService.readPartial = mock(() => Promise.resolve(erroredPartial));
 
     // Mock deletePartial
-    partialService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
+    historyService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
 
-    // Spy on partialService methods to verify calls
-    const appendSpy = spyOn(partialService, "appendToHistory");
+    // Spy on historyService methods to verify calls
+    const appendSpy = spyOn(historyService, "appendToHistory");
 
     // Call commitPartial
-    const result = await partialService.commitPartial(workspaceId);
+    const result = await historyService.commitPartial(workspaceId);
 
     // Should succeed
     expect(result.success).toBe(true);
@@ -65,7 +65,7 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     expect(appendedMessage.metadata?.historySequence).toBe(1);
 
     // Should have deleted the partial after committing
-    const deletePartial = partialService.deletePartial as ReturnType<typeof mock>;
+    const deletePartial = historyService.deletePartial as ReturnType<typeof mock>;
     expect(deletePartial).toHaveBeenCalledWith(workspaceId);
   });
 
@@ -107,20 +107,20 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     };
 
     // Mock readPartial to return errored partial
-    partialService.readPartial = mock(() => Promise.resolve(erroredPartial));
+    historyService.readPartial = mock(() => Promise.resolve(erroredPartial));
 
     // Mock deletePartial
-    partialService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
+    historyService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
 
     // Seed existing placeholder into history so getHistoryFromLatestBoundary finds it
-    await partialService.appendToHistory(workspaceId, existingPlaceholder);
+    await historyService.appendToHistory(workspaceId, existingPlaceholder);
 
-    // Spy on partialService methods AFTER seeding to verify only commitPartial calls
-    const appendSpy = spyOn(partialService, "appendToHistory");
-    const updateSpy = spyOn(partialService, "updateHistory");
+    // Spy on historyService methods AFTER seeding to verify only commitPartial calls
+    const appendSpy = spyOn(historyService, "appendToHistory");
+    const updateSpy = spyOn(historyService, "updateHistory");
 
     // Call commitPartial
-    const result = await partialService.commitPartial(workspaceId);
+    const result = await historyService.commitPartial(workspaceId);
 
     // Should succeed
     expect(result.success).toBe(true);
@@ -136,7 +136,7 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     expect(updatedMessage.metadata?.errorType).toBeUndefined();
 
     // Should have deleted the partial after updating
-    const deletePartial = partialService.deletePartial as ReturnType<typeof mock>;
+    const deletePartial = historyService.deletePartial as ReturnType<typeof mock>;
     expect(deletePartial).toHaveBeenCalledWith(workspaceId);
   });
 
@@ -164,20 +164,20 @@ describe("HistoryService partial persistence - Error Recovery", () => {
       ],
     };
 
-    partialService.readPartial = mock(() => Promise.resolve(toolOnlyPartial));
-    partialService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
+    historyService.readPartial = mock(() => Promise.resolve(toolOnlyPartial));
+    historyService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
 
-    // Spy on partialService methods to verify calls
-    const appendSpy = spyOn(partialService, "appendToHistory");
-    const updateSpy = spyOn(partialService, "updateHistory");
+    // Spy on historyService methods to verify calls
+    const appendSpy = spyOn(historyService, "appendToHistory");
+    const updateSpy = spyOn(historyService, "updateHistory");
 
-    const result = await partialService.commitPartial(workspaceId);
+    const result = await historyService.commitPartial(workspaceId);
     expect(result.success).toBe(true);
 
     expect(appendSpy).not.toHaveBeenCalled();
     expect(updateSpy).not.toHaveBeenCalled();
 
-    const deletePartial = partialService.deletePartial as ReturnType<typeof mock>;
+    const deletePartial = historyService.deletePartial as ReturnType<typeof mock>;
     expect(deletePartial).toHaveBeenCalledWith(workspaceId);
   });
   test("commitPartial should skip empty errored partial", async () => {
@@ -197,16 +197,16 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     };
 
     // Mock readPartial to return empty errored partial
-    partialService.readPartial = mock(() => Promise.resolve(emptyErrorPartial));
+    historyService.readPartial = mock(() => Promise.resolve(emptyErrorPartial));
 
     // Mock deletePartial
-    partialService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
+    historyService.deletePartial = mock(() => Promise.resolve(Ok(undefined)));
 
-    // Spy on partialService methods to verify calls
-    const appendSpy = spyOn(partialService, "appendToHistory");
+    // Spy on historyService methods to verify calls
+    const appendSpy = spyOn(historyService, "appendToHistory");
 
     // Call commitPartial
-    const result = await partialService.commitPartial(workspaceId);
+    const result = await historyService.commitPartial(workspaceId);
 
     // Should succeed
     expect(result.success).toBe(true);
@@ -215,18 +215,18 @@ describe("HistoryService partial persistence - Error Recovery", () => {
     expect(appendSpy).not.toHaveBeenCalled();
 
     // Should still delete the partial (cleanup)
-    const deletePartial = partialService.deletePartial as ReturnType<typeof mock>;
+    const deletePartial = historyService.deletePartial as ReturnType<typeof mock>;
     expect(deletePartial).toHaveBeenCalledWith(workspaceId);
   });
 });
 
 describe("HistoryService partial persistence - Legacy compatibility", () => {
   let config: Config;
-  let partialService: HistoryService;
+  let historyService: HistoryService;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    ({ config, historyService: partialService, cleanup } = await createTestHistoryService());
+    ({ config, historyService, cleanup } = await createTestHistoryService());
   });
 
   afterEach(async () => {
@@ -246,7 +246,7 @@ describe("HistoryService partial persistence - Legacy compatibility", () => {
     const partialPath = path.join(workspaceDir, "partial.json");
     await fs.writeFile(partialPath, JSON.stringify(partialMessage));
 
-    const result = await partialService.readPartial(workspaceId);
+    const result = await historyService.readPartial(workspaceId);
     expect(result?.metadata?.muxMetadata?.type).toBe("normal");
   });
 });
